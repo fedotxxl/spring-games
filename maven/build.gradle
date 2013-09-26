@@ -1,0 +1,42 @@
+apply plugin : 'java'
+apply plugin : 'idea'
+
+sourceCompatibility = '1.7'
+targetCompatibility = '1.7'
+
+
+
+sourceSets {
+    main {
+        java {
+            srcDirs = ['src']
+        }
+    }
+}
+
+buildDir = 'bin'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    def aetherVersion = "0.9.0.M2"
+    def wagonVersion = "1.0"
+
+    compile 'org.slf4j:slf4j-simple:1.7.5'
+
+    compile 'org.apache.ant:ant:1.9.2'
+    compile 'org.apache.maven:maven-aether-provider:3.1.0'
+
+    compile "org.eclipse.aether:aether-api:$aetherVersion"
+    compile "org.eclipse.aether:aether-util:$aetherVersion"
+    compile "org.eclipse.aether:aether-impl:$aetherVersion"
+    compile "org.eclipse.aether:aether-connector-file:$aetherVersion"
+    compile "org.eclipse.aether:aether-connector-asynchttpclient:$aetherVersion"
+    compile "org.eclipse.aether:aether-connector-wagon:$aetherVersion"
+    compile "org.apache.maven.wagon:wagon-ssh:$wagonVersion"
+    compile "org.apache.maven.wagon:wagon-file:$wagonVersion"
+    compile "org.apache.maven.wagon:wagon-http:$wagonVersion"
+    compile "org.apache.maven.wagon:wagon-http-lightweight:$wagonVersion"
+}
