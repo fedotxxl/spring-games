@@ -1,0 +1,16 @@
+# idea
+/.idea
+*.iws
+*.iml
+*.ipr
+
+#sass
+/search/.sass-cache/
+
+# "temporary" build files
+target/
+build/
+/out/
+
+#gradle
+.gradle/
