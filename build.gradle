@@ -4,6 +4,11 @@ import org.apache.commons.io.FilenameUtils
 
 apply plugin: 'java'
 apply plugin: 'idea'
+apply plugin: 'maven'
+apply plugin: 'maven-publish'
+
+project.group = "ru.grails"
+project.version = "1.0"
 
 buildscript{
     repositories{
@@ -55,7 +60,9 @@ allprojects {
             }
         }
 
-        new File("${buildDir}/jopa/descriptor.json") << JsonOutput.toJson(beans)
+        def path = new File("${buildDir}/jopa/plugins/")
+        path.mkdirs();
+        new File(path, "descriptor.${project.name}.json") << JsonOutput.toJson(beans)
     }
 
     task copyClasses(type: Copy) {
@@ -89,13 +96,13 @@ task copyLibs(type: Copy) {
 }
 
 task extractStaticFromPlugins(type: Copy) {
-    configurations.jopaPlugin.each { File file ->
-        from (zipTree(file)) {
-            include '/static/**'
-        }
-    }
-
-    into "${buildDir}/jopa/static/plugins"
+//    configurations.jopaPlugin.each { File file ->
+//        from (zipTree(file)) {
+//            include '/static/**'
+//        }
+//    }
+//
+//    into "${buildDir}/jopa/static/plugins"
 }
 
 
@@ -105,6 +112,7 @@ project.ext {
     springVersion = '3.2.4.RELEASE'
     basePackage = "ru.grails"
     beanTypes = ["controllers", "services", "conf"]
+    plugins = []
 }
 
 sourceSets {
@@ -113,7 +121,9 @@ sourceSets {
             srcDir ("api/src")
             srcDir ("src")
         }
+    }
 
+    assets {
         resources {
             srcDir ("static")
         }
@@ -170,9 +180,90 @@ dependencies {
     compile 'org.atteo:evo-classindex:2.0'
 
 //    jopaPlugin 'org.grails:grails-core:2.3.0'
+//    jopaPlugin project(':subProject')
     compile project(':subProject')
 }
 
+
+task jopaConfig() << {
+//    println configurations.jopaPlugin.dependencies.files.collect { it }
+}
+
+def getPlugins(def pResolvedDependency) {
+    pResolvedDependency.children.each{
+        getPlugins(it)
+    }
+
+    println pResolvedDependency.moduleGroup
+
+    if(pResolvedDependency.moduleGroup in ["ru.grails.plugin", "joda-time"]) {
+        plugins << pResolvedDependency
+        println 'adding'
+    }
+}
+
+task printPlugins() << {
+//    println "  Project:" + project.name
+//    project.configurations.each { conf ->
+//        println "    Configuration: ${conf.name}"
+//        conf.allDependencies.each { dep ->
+//            println "      ${dep.group}:${dep.name}:${dep.version}"
+//        }
+//    }
+
+
+//    configurations.runtime.resolvedConfiguration.firstLevelModuleDependencies.each{directDep ->
+//        getPlugins(directDep)
+//    }
+
+    println configurations.runtime.resolvedConfiguration.resolvedArtifacts.findAll {
+        println "${it.name} ${it.moduleVersion.id}"
+    }
+
+    println plugins
+}
+
+task zipPlugin(type:Zip, dependsOn: 'collectLists') {
+    into("/static/plugins/${project.name}") {
+        from sourceSets.assets.allSource
+    }
+
+    into("/plugins") {
+        from new File("${buildDir}/jopa/plugins/descriptor.${project.name}.json")
+    }
+}
+
+publishing {
+    publications {
+        def srcArtifactId = "${project.name}-src"
+
+        impl(MavenPublication) {
+            groupId 'ru.grails.plugins'
+            artifactId srcArtifactId
+
+            from components.java
+        }
+        api(MavenPublication) {
+            groupId 'ru.grails.plugins'
+
+            artifact zipPlugin
+
+            //adding jar as dependency... not the best solution
+            pom.withXml {
+                def dependency = asNode().appendNode('dependencies').appendNode('dependency')
+                dependency.appendNode('groupId', 'ru.grails.plugins')
+                dependency.appendNode('artifactId', srcArtifactId)
+                dependency.appendNode('version', project.version)
+                dependency.appendNode('scope', 'runtime')
+            }
+        }
+    }
+    repositories {
+        maven {
+            url "$buildDir/repo" // change to point to your repo, e.g. http://my.org/repo
+        }
+    }
+}
 
 
 public static String packageToPath(String p) {
