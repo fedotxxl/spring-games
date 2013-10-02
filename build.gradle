@@ -2,13 +2,22 @@ import groovy.io.FileType
 import groovy.json.JsonOutput
 import org.apache.commons.io.FilenameUtils
 
-apply plugin: 'java'
 apply plugin: 'idea'
 apply plugin: 'maven'
 apply plugin: 'maven-publish'
 
 project.group = "ru.grails"
 project.version = "1.0"
+
+project.ext {
+    springVersion = '3.2.4.RELEASE'
+    basePackage = "ru.grails"
+    beanTypes = ["controllers", "services", "conf"]
+    plugins = []
+    jopaBuild = new File("${buildDir}/jopa/")
+    jopaStatic = new File(jopaBuild, "static")
+    jopaClasses = new File(jopaBuild, "classes")
+}
 
 buildscript{
     repositories{
@@ -20,6 +29,26 @@ buildscript{
 }
 
 allprojects {
+    apply plugin: 'java'
+
+    sourceSets {
+        main {
+            java {
+                srcDir ("src")
+            }
+
+            resources {
+                srcDir ("resources")
+            }
+        }
+
+        assets {
+            resources {
+                srcDir ("static")
+            }
+        }
+    }
+
     repositories {
         mavenCentral()
     }
@@ -75,6 +104,17 @@ allprojects {
         into("${buildDir}/jopa/static")
     }
 
+    task buildClasses(type: Copy) {
+        into jopaClasses
+        from sourceSets.main.output
+    }
+}
+
+subprojects {
+    task buildStatic(type: Copy) {
+        into new File(jopaStatic, project.name)
+        from project.sourceSets.assets.allSource
+    }
 }
 
 task jopaCompile(dependsOn: ['compileJava', 'copyClasses', 'copyStatic', 'copyLibs', 'extractStaticFromPlugins', 'jopa'])
@@ -103,31 +143,6 @@ task extractStaticFromPlugins(type: Copy) {
 //    }
 //
 //    into "${buildDir}/jopa/static/plugins"
-}
-
-
-
-
-project.ext {
-    springVersion = '3.2.4.RELEASE'
-    basePackage = "ru.grails"
-    beanTypes = ["controllers", "services", "conf"]
-    plugins = []
-}
-
-sourceSets {
-    main {
-        java {
-            srcDir ("api/src")
-            srcDir ("src")
-        }
-    }
-
-    assets {
-        resources {
-            srcDir ("static")
-        }
-    }
 }
 
 dependencies {
@@ -233,18 +248,9 @@ task zipPlugin(type:Zip, dependsOn: 'collectLists') {
     }
 }
 
-task buildStatic(type:Sync) {
-    into("${buildDir}/jopa/static")
-
-    into("/") {
-        from sourceSets.assets.allSource
-    }
-
-    subprojects.each { p ->
-        into("plugins/${p.name}") {
-            from { p.sourceSets.assets.allSource }
-        }
-    }
+task buildStatic(type: Copy) {
+    into jopaStatic
+    from project.sourceSets.assets.allSource
 }
 
 publishing {

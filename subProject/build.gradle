@@ -2,29 +2,9 @@ import groovy.io.FileType
 import groovy.json.JsonOutput
 import org.apache.commons.io.FilenameUtils
 
-apply plugin: 'java'
 apply plugin: 'idea'
 
 group = "ru.grails.plugin"
-
-
-sourceSets {
-    main {
-        java {
-            srcDir ("src")
-        }
-
-        resources {
-            srcDir ("resources")
-        }
-    }
-
-    assets {
-        resources {
-            srcDir ("static")
-        }
-    }
-}
 
 //configurations {
 //    // configuration that holds jars to copy into lib
