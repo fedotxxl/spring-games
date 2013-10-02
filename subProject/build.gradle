@@ -18,6 +18,12 @@ sourceSets {
             srcDir ("resources")
         }
     }
+
+    assets {
+        resources {
+            srcDir ("static")
+        }
+    }
 }
 
 //configurations {

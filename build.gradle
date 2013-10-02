@@ -233,18 +233,38 @@ task zipPlugin(type:Zip, dependsOn: 'collectLists') {
     }
 }
 
+task buildStatic(type:Copy) {
+    println project.sourceSets.main.java.srcDirs
+    println project(":subProject").sourceSets.main.java.srcDirs
+
+    into("${buildDir}/jopa/static")
+
+    into("/") {
+        from sourceSets.assets.allSource
+    }
+
+    subprojects.each { p ->
+        into("plugins/${p.name}") {
+            println p
+            println p.sourceSets.main
+            println project(":subProject").sourceSets.main.java.srcDirs
+            from p.sourceSets.assets.allSource
+        }
+    }
+}
+
 publishing {
     publications {
         def srcArtifactId = "${project.name}-src"
 
         impl(MavenPublication) {
-            groupId 'ru.grails.plugins'
-            artifactId srcArtifactId
+            //groupId 'ru.grails.plugins'
+            //artifactId srcArtifactId
 
             from components.java
         }
         api(MavenPublication) {
-            groupId 'ru.grails.plugins'
+            //groupId 'ru.grails.plugins'
 
             artifact zipPlugin
 
