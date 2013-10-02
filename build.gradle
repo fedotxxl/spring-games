@@ -233,10 +233,7 @@ task zipPlugin(type:Zip, dependsOn: 'collectLists') {
     }
 }
 
-task buildStatic(type:Copy) {
-    println project.sourceSets.main.java.srcDirs
-    println project(":subProject").sourceSets.main.java.srcDirs
-
+task buildStatic(type:Sync) {
     into("${buildDir}/jopa/static")
 
     into("/") {
@@ -245,10 +242,7 @@ task buildStatic(type:Copy) {
 
     subprojects.each { p ->
         into("plugins/${p.name}") {
-            println p
-            println p.sourceSets.main
-            println project(":subProject").sourceSets.main.java.srcDirs
-            from p.sourceSets.assets.allSource
+            from { p.sourceSets.assets.allSource }
         }
     }
 }
