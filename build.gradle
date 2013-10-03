@@ -17,6 +17,7 @@ project.ext {
     jopaBuild = new File("${buildDir}/jopa/")
     jopaStatic = new File(jopaBuild, "static")
     jopaClasses = new File(jopaBuild, "classes")
+    descriptorFileName = "app.json"
 }
 
 buildscript{
@@ -89,9 +90,9 @@ allprojects {
             }
         }
 
-        def path = new File("${buildDir}/jopa/plugins/")
+        def path = new File("${jopaBuild}/plugins/")
         path.mkdirs();
-        new File(path, "descriptor.${project.name}.json") << JsonOutput.toJson(beans)
+        new File(path, descriptorFileName) << JsonOutput.toJson(beans)
     }
 
     task copyClasses(type: Copy) {
@@ -111,6 +112,11 @@ allprojects {
 }
 
 subprojects {
+
+    project.ext {
+        descriptorFileName = "plugin.${project.name}.json"
+    }
+
     task buildStatic(type: Copy) {
         into new File(jopaStatic, project.name)
         from project.sourceSets.assets.allSource
