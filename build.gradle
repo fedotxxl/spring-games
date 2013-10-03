@@ -52,6 +52,7 @@ allprojects {
 
     repositories {
         mavenCentral()
+        mavenLocal()
     }
 
     configurations {
@@ -136,9 +137,13 @@ task jopaCompileSubs << {
 
 
 task copyLibs(type: Copy) {
-//        from configurations.compile
-    from configurations.jopaPlugin
-    into "${buildDir}/jopa/libs"
+    from configurations.compile
+    into new File(jopaBuild, "libs")
+    exclude '**/*.zip'
+}
+
+task extractPlugins() {
+    //todo
 }
 
 task extractStaticFromPlugins(type: Copy) {
@@ -203,6 +208,9 @@ dependencies {
 //    jopaPlugin 'org.grails:grails-core:2.3.0'
 //    jopaPlugin project(':subProject')
     compile project(':subProject')
+
+    //plugin
+    compile "ru.grails.plugins:spring-games-plugin:1.0"
 }
 
 
