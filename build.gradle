@@ -124,7 +124,7 @@ subprojects {
     }
 }
 
-task jopaCompile(dependsOn: ['compileJava', 'copyClasses', 'copyStatic', 'copyLibs', 'extractStaticFromPlugins', 'jopa'])
+task jopaCompile(dependsOn: ['compileJava', 'copyClasses', 'copyStatic', 'copyLibs', 'jopa'])
 
 task jopaCompileSubs << {
     tasks.compileJava.execute()
@@ -132,7 +132,6 @@ task jopaCompileSubs << {
     tasks.copyClasses.execute()
     tasks.copyStatic.execute()
     tasks.copyLibs.execute()
-    tasks.extractStaticFromPlugins.execute()
 }
 
 
@@ -142,18 +141,23 @@ task copyLibs(type: Copy) {
     exclude '**/*.zip'
 }
 
-task extractPlugins() {
-    //todo
+/**
+ * This is support task. Don't call it manually! Instead call unpackPlugins
+ * http://gradle.1045684.n5.nabble.com/dependsOn-and-configurations-td5145208.html
+ */
+task configurePluginsToUnpack {
+    dependsOn configurations.compile
+    doLast {
+        configurations.compile.each { file ->
+            if (file.name.endsWith(".zip")) {
+                unpackPlugins.from(zipTree(file))
+            }
+        }
+    }
 }
 
-task extractStaticFromPlugins(type: Copy) {
-//    configurations.jopaPlugin.each { File file ->
-//        from (zipTree(file)) {
-//            include '/static/**'
-//        }
-//    }
-//
-//    into "${buildDir}/jopa/static/plugins"
+task unpackPlugins(type: Copy, dependsOn: configurePluginsToUnpack) {
+    into jopaBuild
 }
 
 dependencies {
