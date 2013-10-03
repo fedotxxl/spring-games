@@ -250,7 +250,10 @@ task zipPlugin(type:Zip, dependsOn: 'collectLists') {
     }
 
     into("/plugins") {
-        from new File("${buildDir}/jopa/plugins/descriptor.${project.name}.json")
+        from new File("${buildDir}/jopa/plugins/app.json")
+        rename { String fileName ->
+            "descriptor.${project.name}.json"
+        }
     }
 }
 
@@ -264,13 +267,13 @@ publishing {
         def srcArtifactId = "${project.name}-src"
 
         impl(MavenPublication) {
-            //groupId 'ru.grails.plugins'
-            //artifactId srcArtifactId
+            groupId 'ru.grails.plugins'
+            artifactId srcArtifactId
 
             from components.java
         }
         api(MavenPublication) {
-            //groupId 'ru.grails.plugins'
+            groupId 'ru.grails.plugins'
 
             artifact zipPlugin
 
