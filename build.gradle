@@ -1,5 +1,6 @@
 import groovy.io.FileType
 import groovy.json.JsonOutput
+import io.soyuz.build.BuildPaths
 import org.apache.commons.io.FilenameUtils
 
 apply plugin: 'idea'
@@ -14,6 +15,7 @@ project.ext {
     basePackage = "ru.grails"
     beanTypes = ["controllers", "services", "conf"]
     plugins = []
+    soyuz = [paths: new BuildPaths(new File("${buildDir}/jopa/"))]
     jopaBuild = new File("${buildDir}/jopa/")
     jopaStatic = new File(jopaBuild, "static")
     jopaClasses = new File(jopaBuild, "classes")
@@ -23,9 +25,11 @@ project.ext {
 buildscript{
     repositories{
         mavenCentral()
+        mavenLocal()
     }
     dependencies{
         classpath 'org.apache.commons:commons-io:1.3.2'
+        classpath 'io.soyuz:soyuz-build:1.0.SNAPSHOT'
     }
 }
 
@@ -178,62 +182,15 @@ task unpackPlugins(type: Copy, dependsOn: configurePluginsToUnpack) {
 }
 
 dependencies {
-    //add groovy support
-    compile "org.springframework:spring-core:$springVersion"
-    compile "org.springframework:spring-context:$springVersion"
-    compile "org.jadira.usertype:usertype.jodatime:2.0"
-
-    //add logging support
-    //compile "org.slf4j:slf4j-log4j12:$slf4jVersion"
-    compile "ch.qos.logback:logback-classic:1.0.6"
-
-    //test support
-    testCompile "com.h2database:h2:1.3.163"
-    testCompile "junit:junit:4.10"
-    testCompile "org.springframework:spring-test:$springVersion"
-
-    //html unit
-    compile 'net.sourceforge.htmlunit:htmlunit:2.11'
-
-    //add groovy support
-    compile "org.springframework:spring-jdbc:$springVersion"
-    compile "org.springframework:spring-tx:$springVersion"
-    compile "org.springframework:spring-orm:$springVersion"
-//    compile "org.hibernate:hibernate-core:$hibernateVersion"
-
-    compile "commons-io:commons-io:2.4"
-
-    //will come with all needed Spring dependencies such as spring-core and spring-beans
-    compile "org.springframework:spring-orm:$springVersion"
-    compile "org.springframework:spring-tx:$springVersion"
-
-    //add hibernate
-    compile "org.hibernate:hibernate-entitymanager:4.1.1.Final"
-    compile "c3p0:c3p0:0.9.1.2"
-    //compile "commons-dbcp:commons-dbcp:1.4"
-
-    //postgresql driver
-    compile "postgresql:postgresql:9.0-801.jdbc4"
-    //data source
-    compile "com.jolbox:bonecp:0.7.1.RELEASE"
-
-    //json serialization
-    compile group:'net.sf.json-lib', name:'json-lib', version:'2.4', classifier:'jdk15'
-
-    compile 'org.apache.httpcomponents:httpclient:4.2.2'
-
-    //utils
-    compile 'com.google.guava:guava:14.0.1'
-    compile 'org.atteo:evo-classindex:2.0'
-
-//    jopaPlugin 'org.grails:grails-core:2.3.0'
-//    jopaPlugin project(':subProject')
     compile project(':subProject')
+
+    //framework dependencies
+    compile "io.soyuz:soyuz-app:1.0.SNAPSHOT"
+    compile "io.soyuz:soyuz-build:1.0.SNAPSHOT"
+    jopaBuildConfiguration "com.springsource.springloaded:springloaded-core:1.1.1.BUILD-SNAPSHOT"
 
     //plugin
     compile "ru.grails.plugins:spring-games-plugin:1.0"
-
-    jopaBuildConfiguration "com.springsource.springloaded:springloaded-core:1.1.1.BUILD-SNAPSHOT"
 }
 
 
