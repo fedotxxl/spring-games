@@ -53,12 +53,16 @@ allprojects {
     repositories {
         mavenCentral()
         mavenLocal()
+        maven {
+            url 'http://maven.springframework.org/snapshot/'
+        }
     }
 
     configurations {
         // configuration that holds jars to copy into lib
         jopaPlugin
         jopaInlinePlugin
+        jopaBuildConfiguration
     }
 
 
@@ -141,6 +145,19 @@ task copyLibs(type: Copy) {
     exclude '**/*.zip'
 }
 
+task copySpringLoaded(type: Copy) {
+    from configurations.jopaBuildConfiguration
+    into "${jopaBuild}/build"
+
+    rename { String fileName ->
+        if (fileName.startsWith("springloaded")) {
+            return "springloaded.jar"
+        } else {
+            return fileName
+        }
+    }
+}
+
 /**
  * This is support task. Don't call it manually! Instead call unpackPlugins
  * http://gradle.1045684.n5.nabble.com/dependsOn-and-configurations-td5145208.html
@@ -215,6 +232,8 @@ dependencies {
 
     //plugin
     compile "ru.grails.plugins:spring-games-plugin:1.0"
+
+    jopaBuildConfiguration "com.springsource.springloaded:springloaded-core:1.1.1.BUILD-SNAPSHOT"
 }
 
 
