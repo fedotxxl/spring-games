@@ -1,6 +1,7 @@
 import groovy.io.FileType
 import groovy.json.JsonOutput
 import io.soyuz.build.BuildPaths
+import io.soyuz.build.BuildUtils
 import org.apache.commons.io.FilenameUtils
 
 apply plugin: 'idea'
@@ -15,10 +16,7 @@ project.ext {
     basePackage = "ru.grails"
     beanTypes = ["controllers", "services", "conf"]
     plugins = []
-    soyuz = [paths: new BuildPaths(new File("${buildDir}/jopa/"))]
-    jopaBuild = new File("${buildDir}/jopa/")
-    jopaStatic = new File(jopaBuild, "static")
-    jopaClasses = new File(jopaBuild, "classes")
+    soyuzPaths = new BuildPaths(new File("${buildDir}/soyuz/"))
     descriptorFileName = "app.json"
 }
 
@@ -47,7 +45,7 @@ allprojects {
             }
         }
 
-        assets {
+        soyuzStatic {
             resources {
                 srcDir ("static")
             }
@@ -56,7 +54,7 @@ allprojects {
 
     repositories {
         mavenCentral()
-        mavenLocal()
+        mavenLocal().snapshotTimeout = 0
         maven {
             url 'http://maven.springframework.org/snapshot/'
         }
@@ -64,58 +62,31 @@ allprojects {
 
     configurations {
         // configuration that holds jars to copy into lib
-        jopaPlugin
-        jopaInlinePlugin
-        jopaBuildConfiguration
+        soyuzBuild
     }
 
-
-    task jopa(dependsOn: 'compileJava') << {
-        println sourceSets.main.output.classesDir
-        println sourceSets.main.output.resourcesDir
-        println buildDir
-
-        println configurations.compile.collect { File file -> file }
-        println configurations.jopaPlugin.collect { File file -> file }
-    }
-
-    task collectLists(dependsOn: 'compileJava') << {
-        println ":${project.name}:collectLists"
-
-        def dir
+    task soyuzCollectLists(dependsOn: ['soyuzMkDirs', 'compileJava']) << {
         def build = sourceSets.main.output.classesDir
         def beans = [:].withDefault {[]}
-        def parent = new File(build, packageToPath(basePackage))
+        def parent = new File(build, BuildUtils.packageToPath(basePackage))
         if (parent.exists()) {
             beanTypes.each {
-                dir = new File(parent,  it)
+                def dir = new File(parent,  it)
                 if (dir.exists()) {
                     dir.eachFileRecurse (FileType.FILES) { file ->
                         def path = FilenameUtils.removeExtension(file.path)
-                        def relativePath = getRelativePath(build, new File(path))
-                        beans[it] << pathToPackage(relativePath)
+                        def relativePath = BuildUtils.getRelativePath(build, new File(path))
+                        beans[it] << BuildUtils.pathToPackage(relativePath)
                     }
                 }
             }
         }
 
-        def path = new File("${jopaBuild}/plugins/")
-        path.mkdirs();
-        new File(path, descriptorFileName) << JsonOutput.toJson(beans)
+        new File(soyuzPaths.plugins, descriptorFileName) << JsonOutput.toJson(beans)
     }
 
-    task copyClasses(type: Copy) {
-        from(sourceSets.main.output.classesDir)
-        into("${buildDir}/jopa/src")
-    }
-
-    task copyStatic(type: Copy) {
-        from(sourceSets.main.output.resourcesDir)
-        into("${buildDir}/jopa/static")
-    }
-
-    task buildClasses(type: Copy) {
-        into jopaClasses
+    task soyuzBuildClasses(type: Copy) {
+        into soyuzPaths.classes
         from sourceSets.main.output
     }
 }
@@ -126,32 +97,32 @@ subprojects {
         descriptorFileName = "plugin.${project.name}.json"
     }
 
-    task buildStatic(type: Copy) {
-        into new File(jopaStatic, project.name)
-        from project.sourceSets.assets.allSource
+    task soyuzBuildStatic(type: Copy) {
+        into soyuzPaths.getPluginStatic(project.name)
+        from project.sourceSets.soyuzStatic.allSource
     }
+
+    task soyuzMkDirs //do nothing in subprojects
 }
 
-task jopaCompile(dependsOn: ['compileJava', 'copyClasses', 'copyStatic', 'copyLibs', 'jopa'])
-
-task jopaCompileSubs << {
-    tasks.compileJava.execute()
-    tasks.collectLists.execute()
-    tasks.copyClasses.execute()
-    tasks.copyStatic.execute()
-    tasks.copyLibs.execute()
+task soyuzBuildStatic(type: Copy) {
+    into soyuzPaths.static
+    from project.sourceSets.soyuzStatic.allSource
 }
 
+task soyuzMkDirs << {
+    soyuzPaths.plugins.mkdirs()
+}
 
-task copyLibs(type: Copy) {
+task soyuzCopyLibs(type: Copy) {
     from configurations.compile
-    into new File(jopaBuild, "libs")
+    into soyuzPaths.libs
     exclude '**/*.zip'
 }
 
-task copySpringLoaded(type: Copy) {
-    from configurations.jopaBuildConfiguration
-    into "${jopaBuild}/build"
+task soyuzCopyBuildDependencies(type: Copy) {
+    from configurations.soyuzBuild
+    into soyuzPaths.build
 
     rename { String fileName ->
         if (fileName.startsWith("springloaded")) {
@@ -166,20 +137,35 @@ task copySpringLoaded(type: Copy) {
  * This is support task. Don't call it manually! Instead call unpackPlugins
  * http://gradle.1045684.n5.nabble.com/dependsOn-and-configurations-td5145208.html
  */
-task configurePluginsToUnpack {
+task soyuzConfigurePluginsToUnpack {
     dependsOn configurations.compile
     doLast {
         configurations.compile.each { file ->
             if (file.name.endsWith(".zip")) {
-                unpackPlugins.from(zipTree(file))
+                soyuzUnpackPlugins.from(zipTree(file))
             }
         }
     }
 }
 
-task unpackPlugins(type: Copy, dependsOn: configurePluginsToUnpack) {
-    into jopaBuild
+task soyuzUnpackPlugins(type: Copy, dependsOn: soyuzConfigurePluginsToUnpack) {
+    into soyuzPaths.root
 }
+
+task soyuzZipPlugin(type:Zip, dependsOn: 'soyuzCollectLists') {
+    into(soyuzPaths.getRelativePluginStatic(project.name)) {
+        from sourceSets.soyuzStatic.allSource
+    }
+
+    into(soyuzPaths.relativePlugins) {
+        from new File(soyuzPaths.plugins, "app.json")
+        rename { String fileName ->
+            "descriptor.${project.name}.json"
+        }
+    }
+}
+
+task soyuzBuildApp(dependsOn: [allprojects.soyuzCollectLists, allprojects.soyuzBuildClasses, allprojects.soyuzBuildStatic, soyuzCopyLibs, soyuzCopyBuildDependencies, soyuzUnpackPlugins])
 
 dependencies {
     compile project(':subProject')
@@ -187,67 +173,10 @@ dependencies {
     //framework dependencies
     compile "io.soyuz:soyuz-app:1.0.SNAPSHOT"
     compile "io.soyuz:soyuz-build:1.0.SNAPSHOT"
-    jopaBuildConfiguration "com.springsource.springloaded:springloaded-core:1.1.1.BUILD-SNAPSHOT"
+    soyuzBuild "com.springsource.springloaded:springloaded-core:1.1.1.BUILD-SNAPSHOT"
 
     //plugin
-    compile "ru.grails.plugins:spring-games-plugin:1.0"
-}
-
-
-task jopaConfig() << {
-//    println configurations.jopaPlugin.dependencies.files.collect { it }
-}
-
-def getPlugins(def pResolvedDependency) {
-    pResolvedDependency.children.each{
-        getPlugins(it)
-    }
-
-    println pResolvedDependency.moduleGroup
-
-    if(pResolvedDependency.moduleGroup in ["ru.grails.plugin", "joda-time"]) {
-        plugins << pResolvedDependency
-        println 'adding'
-    }
-}
-
-task printPlugins() << {
-//    println "  Project:" + project.name
-//    project.configurations.each { conf ->
-//        println "    Configuration: ${conf.name}"
-//        conf.allDependencies.each { dep ->
-//            println "      ${dep.group}:${dep.name}:${dep.version}"
-//        }
-//    }
-
-
-//    configurations.runtime.resolvedConfiguration.firstLevelModuleDependencies.each{directDep ->
-//        getPlugins(directDep)
-//    }
-
-    println configurations.runtime.resolvedConfiguration.resolvedArtifacts.findAll {
-        println "${it.name} ${it.moduleVersion.id}"
-    }
-
-    println plugins
-}
-
-task zipPlugin(type:Zip, dependsOn: 'collectLists') {
-    into("/static/plugins/${project.name}") {
-        from sourceSets.assets.allSource
-    }
-
-    into("/plugins") {
-        from new File("${buildDir}/jopa/plugins/app.json")
-        rename { String fileName ->
-            "descriptor.${project.name}.json"
-        }
-    }
-}
-
-task buildStatic(type: Copy) {
-    into jopaStatic
-    from project.sourceSets.assets.allSource
+    //compile "ru.grails.plugins:spring-games-plugin:1.0"
 }
 
 publishing {
@@ -263,7 +192,7 @@ publishing {
         api(MavenPublication) {
             groupId 'ru.grails.plugins'
 
-            artifact zipPlugin
+            artifact soyuzZipPlugin
 
             //adding jar as dependency... not the best solution
             pom.withXml {
@@ -280,17 +209,4 @@ publishing {
             url "$buildDir/repo" // change to point to your repo, e.g. http://my.org/repo
         }
     }
-}
-
-
-public static String packageToPath(String p) {
-    return p.replace(".", "/");
-}
-
-public static String pathToPackage(String p) {
-    return p.replace("/", ".");
-}
-
-public static String getRelativePath(File root, File full) {
-    return root.toURI().relativize( full.toURI() ).toString()
 }

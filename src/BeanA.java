@@ -3,9 +3,7 @@
  * Copyright (c) 2012 Cybervision. All rights reserved.
  */
 
-import ru.grails.Services;
-
-public class BeanA implements Services {
+public class BeanA {
 
     void doJob() {
         System.out.println("hello world");
